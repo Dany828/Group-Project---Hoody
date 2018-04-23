@@ -1,0 +1,121 @@
+#include <SimbleeBLE.h>
+#include <SimbleeForMobile.h>
+//https://learn.sparkfun.com/tutorials/hazardous-gas-monitor/calculate-gas-sensor-ppm
+//http://www.mouser.com/catalog/specsheets/Seeed_101020045.pdf
+//https://www.elecrow.com/wiki/index.php?title=Analog_CO/Combustible_Gas_Sensor(MQ9)
+//31/03/18 andrew henry
+//need to use 1.6.5
+
+//led ports change the ports to the board ports
+int red = 10;
+int ora = 11;
+int yel = 12;
+int gre = 15;
+
+//sensor vars
+float sensor_volt;
+float RS_gas; // Get value of RS in a GAS
+float ratio; // Get ratio RS_GAS/RS_air
+float ppm;
+
+//polution levels change to set the levels
+int low = 0;
+int midLow = 20;
+int midHig = 35;
+int high = 50;
+
+// the setup function runs once when you press reset or power the board
+void setup() {
+  Serial.begin(9600);
+  SimbleeForMobile.begin();
+  Serial.println("Waiting for connection...");
+  SimbleeBLE.deviceName = "hoody";
+  SimbleeBLE.advertisementData = "data";
+  SimbleeBLE.advertisementInterval = MILLISECONDS(300);
+  SimbleeBLE.txPowerLevel = -20;  // (-20dbM to +4 dBm)
+  
+  SimbleeBLE.begin();
+  // initialize digital pin LED_BUILTIN as an output.
+  pinMode(red, OUTPUT);
+  pinMode(ora, OUTPUT);
+  pinMode(yel, OUTPUT);
+  pinMode(gre, OUTPUT);
+  
+}
+
+// the loop function runs over and over again forever
+void loop() {
+  //sensor code begin
+  int sensorValue = analogRead(3);
+  sensor_volt = (float)sensorValue / 1024 * 5.0;
+  RS_gas = (5.0 - sensor_volt) / sensor_volt; // omit *RL
+
+  ratio = RS_gas / 1.8; // ratio = RS/R0
+  ppm = 3.027 * exp(1.0698 * sensor_volt);
+  /*-----------------------------------------------------------------------*/
+
+  //led code begin
+  if (ppm >= high)// high polution level )
+  {
+    digitalWrite(red, HIGH);
+    digitalWrite(ora, LOW);
+    digitalWrite(yel, LOW);
+    digitalWrite(gre, LOW);
+  };
+  if (ppm >= midHig && ppm < high )// medium high polution level )
+  {
+    digitalWrite(red, LOW);
+    digitalWrite(ora, HIGH);
+    digitalWrite(yel, LOW);
+    digitalWrite(gre, LOW);
+  };
+  if (ppm >= midLow && ppm < midHig)// medium low polution level )
+  {
+    digitalWrite(red, LOW);
+    digitalWrite(ora, LOW);
+    digitalWrite(yel, HIGH);
+    digitalWrite(gre, LOW);
+  };
+  if (ppm >= low && ppm < midLow)// low polution level )
+  {
+    digitalWrite(red, LOW);
+    digitalWrite(ora, LOW);
+    digitalWrite(yel, LOW);
+    digitalWrite(gre, HIGH);
+  };
+  /*-----------------------------------------------------------------------*/
+
+  //debug code not needed in final
+  Serial.print("sensor_volt = ");
+  Serial.println(sensor_volt);
+  Serial.print("RS_ratio = ");
+  Serial.println(RS_gas);
+  Serial.print("Rs/R0 = ");
+  Serial.println(ratio);
+  Serial.print("ppm = ");
+  Serial.println(ppm);
+  Serial.print("\n\n");
+  /*-----------------------------------------------------------------------*/
+
+  Serial.println(ppm);
+  SimbleeBLE.sendFloat(ppm);
+
+   
+  delay(1000); // wait for a second
+}
+
+void SimbleeBLE_onConnect()
+
+{
+
+  Serial.println("Connect");
+
+}
+
+void SimbleeBLE_onDisconnect()
+
+{
+
+  Serial.println("Disconnect");
+
+}
